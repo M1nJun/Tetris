@@ -1,4 +1,5 @@
 import pygame
+from random import choice
 
 PADDING = 20
 
@@ -18,7 +19,7 @@ WINDOW_WIDTH = GAME_WIDTH + SIDEBAR_WIDTH + PADDING * 3
 WINDOW_HEIGHT = GAME_HEIGHT + PADDING * 2
 
 # game behavior
-BLOCK_OFFSET = pygame.Vector2(COLS // 2, -1)
+BLOCK_OFFSET = pygame.Vector2(COLS // 2, 5)
 
 # Colors 
 YELLOW = '#f1e60d'
@@ -32,6 +33,13 @@ GRAY = '#1C1C1C'
 WHITE = '#FFFFFF'
 
 # shapes
+# keys are the original shapes of the tetrominos
+# Inside of the grid, imagine the center of your shape to be (0,0)
+# the rest of the configurations are in respect to that center
+# for example: the T shape would look like:
+#         (0,1)
+# (-1,0)  (0,0)  (1,0)
+# this is specifically done to make the implementation of the tetrominos class easier
 TETROMINOS = {
 	'T': {'shape': [(0,0), (-1,0), (1,0), (0,-1)], 'color': PURPLE},
 	'O': {'shape': [(0,0), (0,-1), (1,0), (1,-1)], 'color': YELLOW},
@@ -53,7 +61,10 @@ class Game:
         self.sprites = pygame.sprite.Group()
 
         # was going to do tuple for the pos argument, but pygame had it's own vector implementation
-        self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
+        # self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
+
+        # self.sprites is the group argument
+        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites)
 
     def draw_grid(self):
 
@@ -75,6 +86,15 @@ class Game:
         self.display_surface.blit(self.surface, (PADDING,PADDING))
         pygame.draw.rect(self.display_surface, WHITE, self.rect, 2, 2)
 
+
+class Tetromino:
+    def __init__(self, shape, group):
+        
+        self.block_positions = TETROMINOS[shape]['shape']
+        self.color = TETROMINOS[shape]['color']
+
+        self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
+
 # discovered easy tool called sprite
 class Block(pygame.sprite.Sprite):
     def __init__(self, group, pos, color):
@@ -86,8 +106,14 @@ class Block(pygame.sprite.Sprite):
 
         # positioning
         # argument pos should be tuple that stands for the indices for the two dimensional grid
-        x = pos.x * CELL
-        y = pos.y * CELL
+
+        # the shape positions in the tetrominos dictionaries are in tuples
+        # but the block class is expecting a pygame Vector, need to convert
+        self.pos = pygame.Vector2(pos) + BLOCK_OFFSET
+        x = self.pos.x * CELL
+        y = self.pos.y * CELL
+        # another issue faced was that since the positions had negative values,
+        # if the tetromino was created at the very topleft, it went outside the screen
         self.rect = self.image.get_rect(topleft = (x,y))
 
 
