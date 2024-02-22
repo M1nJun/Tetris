@@ -18,8 +18,11 @@ SCORE_HEIGHT_R = 1 - PREVIEW_HEIGHT_R
 WINDOW_WIDTH = GAME_WIDTH + SIDEBAR_WIDTH + PADDING * 3
 WINDOW_HEIGHT = GAME_HEIGHT + PADDING * 2
 
-# game behavior
-BLOCK_OFFSET = pygame.Vector2(COLS // 2, 5)
+# game behaviour 
+UPDATE_START_SPEED = 200
+MOVE_WAIT_TIME = 200
+ROTATE_WAIT_TIME = 200
+BLOCK_OFFSET = pygame.Vector2(COLS // 2, -1)
 
 # Colors 
 YELLOW = '#f1e60d'
@@ -55,6 +58,7 @@ SCORE_DATA = {1: 40, 2: 100, 3: 300, 4: 1200}
 class Game:
     def __init__(self):
 
+        # general
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
         self.display_surface = pygame.display.get_surface()
         self.rect = self.surface.get_rect(topleft = (PADDING,PADDING))
@@ -63,8 +67,23 @@ class Game:
         # was going to do tuple for the pos argument, but pygame had it's own vector implementation
         # self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
 
+        # tetromino
         # self.sprites is the group argument
         self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites)
+
+        # timer
+        self.timers = {
+            'vertical move': Timer(UPDATE_START_SPEED, True, self.move_down)
+        }
+        self.timers['vertical move'].activate()
+
+    def timer_update(self):
+        for timer in self.timers.values():
+            timer.update()
+
+
+    def move_down(self):
+        self.tetromino.move_down()
 
     def draw_grid(self):
 
@@ -78,6 +97,10 @@ class Game:
 
     def run(self):
         
+        # update
+        self.timer_update()
+        self.sprites.update()
+
         self.surface.fill(GRAY)
         self.sprites.draw(self.surface)
 
@@ -94,6 +117,10 @@ class Tetromino:
         self.color = TETROMINOS[shape]['color']
 
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
+
+    def move_down(self):
+        for block in self.blocks:
+            block.pos.y += 1
 
 # discovered easy tool called sprite
 class Block(pygame.sprite.Sprite):
@@ -116,6 +143,54 @@ class Block(pygame.sprite.Sprite):
         # if the tetromino was created at the very topleft, it went outside the screen
         self.rect = self.image.get_rect(topleft = (x,y))
 
+    def update(self):
+        # self.pos -> rect
+        x = self.pos.x * CELL
+        y = self.pos.y * CELL
+        self.rect = self.image.get_rect(topleft = (x,y))
+
+
+# pygame doesn't have a built-in timer
+# 1 sec = 1 milisec
+# for time, you need to think about in-terms of the starting point
+class Timer:
+    def __init__(self, duration, repeated = False, func = None):
+        self.repeated = repeated
+        self.func = func
+        self.duration = duration
+
+        self.start_time = 0
+        self.active = False
+
+    # only called once
+    def activate(self):
+        self.active = True
+        # get ticks give you the time that has elapsed since the beginning of the game, prolly since pygame.init()
+        self.start_time = pygame.time.get_ticks()
+
+    def deactivate(self):
+        self.active = False
+        self.start_time = 0
+
+    # I want to call this every single frame of the game
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.start_time >= self.duration and self.active:
+            
+            # call the function only when you do get a function in the argument
+            if self.func and self.start_time != 0:
+                self.func()
+
+            # reset timer
+            self.deactivate()
+
+            # repeat the timer
+            if self.repeated:
+                self.activate()
+
+
+
+    
 
 class Preview:
     def __init__(self):

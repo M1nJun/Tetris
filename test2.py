@@ -32,7 +32,7 @@ cat_y = 0
 shiba_x = 500
 shiba_y = screen_width - 300
 
-direction = 'right'
+right = True
 
 
 running = True
@@ -41,19 +41,31 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_m:
+                if right:
+                    cat_x = cat_x + 50
+                    if cat_x > screen_width - 300:
+                        right = not right
+                        cat_img = pygame.transform.flip(cat_img, True, False)
+                        screen.blit(cat_img, [cat_x, cat_y])
+                if not right:
+                    cat_x = cat_x - 50
+                    if cat_x < 0:
+                        right = not right
+                        cat_img = pygame.transform.flip(cat_img, True, False)
+                        screen.blit(cat_img, [cat_x, cat_y])
+
+        elif event.type == pygame.MOUSEMOTION:
+                cat_x, cat_y = event.pos
+        
+    screen.blit(cat_img, [cat_x, cat_y])
+
+                
     screen.blit(cat_img, cat_rect)
     screen.blit(shiba_img, shiba_rect)
 
-    if direction == 'right':
-        cat_x = cat_x + 5
-        if cat_x > screen_width - 300:
-            direction = 'left'
-            cat_img = pygame.transform.flip(cat_img, True, False)
-    elif direction == 'left':
-        cat_x = cat_x - 5
-        if cat_x < 0:
-            direction = 'right'
-            cat_img = pygame.transform.flip(cat_img, True, False)
+
     screen.blit(cat_img, [cat_x, cat_y])
     pygame.display.flip()
 
