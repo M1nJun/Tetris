@@ -1,6 +1,9 @@
 import pygame
 from random import choice
 
+FPS = 200
+clock = pygame.time.Clock()
+
 PADDING = 20
 
 # game
@@ -43,6 +46,7 @@ WHITE = '#FFFFFF'
 #         (0,1)
 # (-1,0)  (0,0)  (1,0)
 # this is specifically done to make the implementation of the tetrominos class easier
+
 TETROMINOS = {
 	'T': {'shape': [(0,0), (-1,0), (1,0), (0,-1)], 'color': PURPLE},
 	'O': {'shape': [(0,0), (0,-1), (1,0), (1,-1)], 'color': YELLOW},
@@ -65,21 +69,12 @@ class Game:
         self.sprites = pygame.sprite.Group()
 
         # was going to do tuple for the pos argument, but pygame had it's own vector implementation
-        # self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
+        self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
 
         # tetromino
         # self.sprites is the group argument
         self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites)
 
-        # timer
-        self.timers = {
-            'vertical move': Timer(UPDATE_START_SPEED, True, self.move_down)
-        }
-        self.timers['vertical move'].activate()
-
-    def timer_update(self):
-        for timer in self.timers.values():
-            timer.update()
 
 
     def move_down(self):
@@ -95,10 +90,18 @@ class Game:
             y = row * CELL
             pygame.draw.line(self.surface, WHITE, (0,y), (self.surface.get_width(),y), 1)
 
-    def run(self):
+    def input(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            self.tetromino.move_horizontal(-1)
+        if keys[pygame.K_RIGHT]:
+            self.tetromino.move_horizontal(1)
+
+    def run(self, i, j):
         
         # update
-        self.timer_update()
+        if j == 0:
+            self.input()
         self.sprites.update()
 
         self.surface.fill(GRAY)
@@ -109,6 +112,9 @@ class Game:
         self.display_surface.blit(self.surface, (PADDING,PADDING))
         pygame.draw.rect(self.display_surface, WHITE, self.rect, 2, 2)
 
+        if i == 0:
+            self.tetromino.move_down()
+
 
 class Tetromino:
     def __init__(self, shape, group):
@@ -118,9 +124,32 @@ class Tetromino:
 
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
 
+    # collisions
+    def next_move_horizontal_collide(self, blocks, amount):
+        # for every single block in blocks, call the horizontal_collide function with a new x position
+        collision_list = [block.horizontal_collide(int(block.pos.x + amount)) for block in self.blocks]
+        # checking if there is at least one true value in collision_list
+        return True if any(collision_list) else False
+    
+    def next_move_vertical_collide(self, blocks, amount):
+
+        collision_list = [block.vertical_collide(int(block.pos.y + amount)) for block in self.blocks]
+
+        return True if any(collision_list) else False
+
+    # movement
+    def move_horizontal(self, amount):
+        # We will allow only horizontal movement when you are in bounds
+        if not self.next_move_horizontal_collide(self.blocks, amount):
+            for block in self.blocks:
+                block.pos.x += amount
+
     def move_down(self):
-        for block in self.blocks:
-            block.pos.y += 1
+
+        if not self.next_move_vertical_collide(self.blocks, 1):
+            for block in self.blocks:
+                block.pos.y += 1
+
 
 # discovered easy tool called sprite
 class Block(pygame.sprite.Sprite):
@@ -143,6 +172,14 @@ class Block(pygame.sprite.Sprite):
         # if the tetromino was created at the very topleft, it went outside the screen
         self.rect = self.image.get_rect(topleft = (x,y))
 
+    def horizontal_collide(self, x):
+        if not 0 <= x < COLS:
+            return True
+
+    def vertical_collide(self, y):
+        if y >= ROWS:
+            return True
+
     def update(self):
         # self.pos -> rect
         x = self.pos.x * CELL
@@ -153,40 +190,6 @@ class Block(pygame.sprite.Sprite):
 # pygame doesn't have a built-in timer
 # 1 sec = 1 milisec
 # for time, you need to think about in-terms of the starting point
-class Timer:
-    def __init__(self, duration, repeated = False, func = None):
-        self.repeated = repeated
-        self.func = func
-        self.duration = duration
-
-        self.start_time = 0
-        self.active = False
-
-    # only called once
-    def activate(self):
-        self.active = True
-        # get ticks give you the time that has elapsed since the beginning of the game, prolly since pygame.init()
-        self.start_time = pygame.time.get_ticks()
-
-    def deactivate(self):
-        self.active = False
-        self.start_time = 0
-
-    # I want to call this every single frame of the game
-    def update(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.start_time >= self.duration and self.active:
-            
-            # call the function only when you do get a function in the argument
-            if self.func and self.start_time != 0:
-                self.func()
-
-            # reset timer
-            self.deactivate()
-
-            # repeat the timer
-            if self.repeated:
-                self.activate()
 
 
 
@@ -223,7 +226,12 @@ class Main:
         self.preview = Preview()
     
     def run(self):
+        i = 0
+        j = 0
         while True:
+            i = (i+1)%60
+            j = (j+1)%4
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -231,13 +239,14 @@ class Main:
             
             self.display_surface.fill(GRAY)
 
-            self.game.run()
+            self.game.run(i, j)
             self.score.run()
             self.preview.run()
 
             pygame.display.update()
-            # for frame rate
-            self.clock.tick()
+
+            clock.tick(FPS)
+
 
 if __name__ == '__main__':
     main = Main()
