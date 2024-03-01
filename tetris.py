@@ -71,13 +71,23 @@ class Game:
         # was going to do tuple for the pos argument, but pygame had it's own vector implementation
         # self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
 
+        # this is a nested list that is exactly the same size as the grid. For every cell 0 is initialized.
+        self.occupancy = [[0 for x in range(COLS)] for y in range(ROWS)]
         # tetromino
         # self.sprites is the group argument
-        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites, self.create_new_tetromino)
+        self.tetromino = Tetromino(
+            choice(list(TETROMINOS.keys())),
+            self.sprites,
+            self.spawn_new_tetromino,
+            self.occupancy)
 
     # had to create a new argument for tetromino class to shift to allow new tetromino to spawn when curr tetromino hits the bottom
-    def create_new_tetromino(self):
-        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites, self.create_new_tetromino)
+    def spawn_new_tetromino(self):
+        self.tetromino = Tetromino(
+            choice(list(TETROMINOS.keys())),
+            self.sprites,
+            self.spawn_new_tetromino,
+            self.occupancy)
 
     def move_down(self):
         self.tetromino.move_down()
@@ -121,24 +131,26 @@ class Game:
 
 
 class Tetromino:
-    def __init__(self, shape, group, create_new_tetromino):
+    def __init__(self, shape, group, spawn_new_tetromino, occupancy):
         
         self.block_positions = TETROMINOS[shape]['shape']
         self.color = TETROMINOS[shape]['color']
-        self.create_new_tetromino = create_new_tetromino
+        self.spawn_new_tetromino = spawn_new_tetromino
+        self.occupancy = occupancy
 
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
 
     # collisions
     def next_move_horizontal_collide(self, blocks, amount):
         # for every single block in blocks, call the horizontal_collide function with a new x position
-        collision_list = [block.horizontal_collide(int(block.pos.x + amount)) for block in self.blocks]
+        # the second argument is to hand over the occupancy list
+        collision_list = [block.horizontal_collide(int(block.pos.x + amount), self.occupancy) for block in self.blocks]
         # checking if there is at least one true value in collision_list
         return True if any(collision_list) else False
     
     def next_move_vertical_collide(self, blocks, amount):
 
-        collision_list = [block.vertical_collide(int(block.pos.y + amount)) for block in self.blocks]
+        collision_list = [block.vertical_collide(int(block.pos.y + amount), self.occupancy) for block in self.blocks]
 
         return True if any(collision_list) else False
 
@@ -155,7 +167,12 @@ class Tetromino:
             for block in self.blocks:
                 block.pos.y += 1
         else:
-            self.create_new_tetromino()
+            # before spawning a new tetromino, update the occupancy of the curr tetromino
+            for block in self.blocks:
+                # by default a vector has floating point numbers. But for indexing, you need an integer. So you need int conversion right before.
+                # I really really wanted to use 1 for the occupancy value but gave up. Now it equals block.
+                self.occupancy[int(block.pos.y)][int(block.pos.x)] = block
+            self.spawn_new_tetromino()
 
 
 # discovered easy tool called sprite
@@ -179,12 +196,20 @@ class Block(pygame.sprite.Sprite):
         # if the tetromino was created at the very topleft, it went outside the screen
         self.rect = self.image.get_rect(topleft = (x,y))
 
-    def horizontal_collide(self, x):
+    def horizontal_collide(self, x, occupancy):
         if not 0 <= x < COLS:
             return True
 
-    def vertical_collide(self, y):
+        if occupancy[int(self.pos.y)][x]:
+            return True
+
+    def vertical_collide(self, y, occupancy):
         if y >= ROWS:
+            return True
+        
+        # if there is a block in the position return true.
+        # weird behavior than the horizontal one because the starting out y position is negative.
+        if y >= 0 and occupancy[y][int(self.pos.x)]:
             return True
 
     def update(self):
