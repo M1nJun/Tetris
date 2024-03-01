@@ -69,13 +69,15 @@ class Game:
         self.sprites = pygame.sprite.Group()
 
         # was going to do tuple for the pos argument, but pygame had it's own vector implementation
-        self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
+        # self.block = Block(self.sprites, pygame.Vector2(3,5), 'blue')
 
         # tetromino
         # self.sprites is the group argument
-        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites)
+        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites, self.create_new_tetromino)
 
-
+    # had to create a new argument for tetromino class to shift to allow new tetromino to spawn when curr tetromino hits the bottom
+    def create_new_tetromino(self):
+        self.tetromino = Tetromino(choice(list(TETROMINOS.keys())), self.sprites, self.create_new_tetromino)
 
     def move_down(self):
         self.tetromino.move_down()
@@ -96,6 +98,8 @@ class Game:
             self.tetromino.move_horizontal(-1)
         if keys[pygame.K_RIGHT]:
             self.tetromino.move_horizontal(1)
+        if keys[pygame.K_DOWN]:
+            self.tetromino.move_down()
 
     def run(self, i, j):
         
@@ -117,10 +121,11 @@ class Game:
 
 
 class Tetromino:
-    def __init__(self, shape, group):
+    def __init__(self, shape, group, create_new_tetromino):
         
         self.block_positions = TETROMINOS[shape]['shape']
         self.color = TETROMINOS[shape]['color']
+        self.create_new_tetromino = create_new_tetromino
 
         self.blocks = [Block(group, pos, self.color) for pos in self.block_positions]
 
@@ -149,6 +154,8 @@ class Tetromino:
         if not self.next_move_vertical_collide(self.blocks, 1):
             for block in self.blocks:
                 block.pos.y += 1
+        else:
+            self.create_new_tetromino()
 
 
 # discovered easy tool called sprite
