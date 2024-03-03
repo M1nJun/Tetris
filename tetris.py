@@ -76,6 +76,7 @@ class Game:
         # tetromino
         # self.sprites is the group argument
         self.tetromino = Tetromino(
+            # 'I',
             choice(list(TETROMINOS.keys())),
             self.sprites,
             self.spawn_new_tetromino,
@@ -83,7 +84,10 @@ class Game:
 
     # had to create a new argument for tetromino class to shift to allow new tetromino to spawn when curr tetromino hits the bottom
     def spawn_new_tetromino(self):
+
+        self.check_full_rows()
         self.tetromino = Tetromino(
+            # 'I', # for testing purposes
             choice(list(TETROMINOS.keys())),
             self.sprites,
             self.spawn_new_tetromino,
@@ -128,6 +132,36 @@ class Game:
 
         if i == 0:
             self.tetromino.move_down()
+
+    def check_full_rows(self):
+
+        # get the full row indices
+        delete_rows = []
+        for i, row in enumerate(self.occupancy):
+            if all(row):
+                delete_rows.append(i)
+
+        if delete_rows:
+            for delete_row in delete_rows:
+                # delete full rows
+                for block in self.occupancy[delete_row]:
+                    # kill is an inbuilt method of sprite. destorys sprite. removing it from group
+                    block.kill()
+                
+                # move down blocks
+                # for each row in occupancy
+                for row in self.occupancy:
+                    # for each block in that row
+                    for block in row:
+                        # if block actually exists
+                        if block and block.pos.y < delete_row:
+                            block.pos.y += 1
+
+            
+            # rebuild occupancy list
+            self.occupancy = [[0 for x in range(COLS)] for y in range(ROWS)]
+            for block in self.sprites:
+                self.occupancy[int(block.pos.y)][int(block.pos.x)] = block
 
 
 class Tetromino:
@@ -218,14 +252,6 @@ class Block(pygame.sprite.Sprite):
         y = self.pos.y * CELL
         self.rect = self.image.get_rect(topleft = (x,y))
 
-
-# pygame doesn't have a built-in timer
-# 1 sec = 1 milisec
-# for time, you need to think about in-terms of the starting point
-
-
-
-    
 
 class Preview:
     def __init__(self):
