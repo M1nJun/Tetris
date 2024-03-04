@@ -106,7 +106,9 @@ class Game:
             y = row * CELL
             pygame.draw.line(self.surface, WHITE, (0,y), (self.surface.get_width(),y), 1)
 
-    def input(self):
+    def input_move(self):
+
+        # checking the movement inputs of the user
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
             self.tetromino.move_horizontal(-1)
@@ -115,11 +117,21 @@ class Game:
         if keys[pygame.K_DOWN]:
             self.tetromino.move_down()
 
-    def run(self, i, j):
+    def input_rotate(self):
+        # checking the rotation inputs of the user
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.tetromino.rotate()
+
+    def run(self, block_fall_clock, block_move_clock, block_rotate_clock):
+        
+        
+        if block_move_clock == 0: 
+            self.input_move()
+        if block_rotate_clock == 0:
+            self.input_rotate()
         
         # update
-        if j == 0:
-            self.input()
         self.sprites.update()
 
         self.surface.fill(GRAY)
@@ -130,7 +142,7 @@ class Game:
         self.display_surface.blit(self.surface, (PADDING,PADDING))
         pygame.draw.rect(self.display_surface, WHITE, self.rect, 2, 2)
 
-        if i == 0:
+        if block_fall_clock == 0:
             self.tetromino.move_down()
 
     def check_full_rows(self):
@@ -167,6 +179,7 @@ class Game:
 class Tetromino:
     def __init__(self, shape, group, spawn_new_tetromino, occupancy):
         
+        self.shape = shape
         self.block_positions = TETROMINOS[shape]['shape']
         self.color = TETROMINOS[shape]['color']
         self.spawn_new_tetromino = spawn_new_tetromino
@@ -208,6 +221,34 @@ class Tetromino:
                 self.occupancy[int(block.pos.y)][int(block.pos.x)] = block
             self.spawn_new_tetromino()
 
+    def rotate(self):
+        # O shape doesn't rotate
+        if self.shape != 'O':
+            # need to think of a pivot
+            # the first block of the blocks of a tetromino is always the pivot block
+            pivot_pos = self.blocks[0].pos
+
+            # new block positions
+            new_block_positions = [block.rotate(pivot_pos) for block in self.blocks]
+
+            # to fix issue when you rotate a tetromino out of bounds
+            for pos in new_block_positions:
+                # horizontal check(left and right grid)
+                if pos.x < 0 or pos.x >= COLS:
+                    return
+
+                # occupancy check(collision with other blocks)
+                if self.occupancy[int(pos.y)][int(pos.x)]:
+                    return
+
+                # floor check
+                if pos.y > ROWS:
+                    return
+
+            # 4 blocks
+            for i,block in enumerate(self.blocks):
+                # 4 blocks in new_bp too
+                block.pos = new_block_positions[i]
 
 # discovered easy tool called sprite
 class Block(pygame.sprite.Sprite):
@@ -229,6 +270,14 @@ class Block(pygame.sprite.Sprite):
         # another issue faced was that since the positions had negative values,
         # if the tetromino was created at the very topleft, it went outside the screen
         self.rect = self.image.get_rect(topleft = (x,y))
+
+    def rotate(self, pivot_pos):
+        # disctance from curr block to the pivot point
+        distance = self.pos - pivot_pos
+        # rotation of the distance, not a new position
+        rotated = distance.rotate(90)
+        new_pos = pivot_pos + rotated
+        return new_pos
 
     def horizontal_collide(self, x, occupancy):
         if not 0 <= x < COLS:
@@ -284,11 +333,13 @@ class Main:
         self.preview = Preview()
     
     def run(self):
-        i = 0
-        j = 0
+        block_fall_clock = 0
+        block_move_clock = 0
+        block_rotate_clock = 0
         while True:
-            i = (i+1)%60
-            j = (j+1)%4
+            block_fall_clock = (block_fall_clock+1)%60
+            block_move_clock = (block_move_clock+1)%4
+            block_rotate_clock = (block_rotate_clock+1)%7
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -297,7 +348,7 @@ class Main:
             
             self.display_surface.fill(GRAY)
 
-            self.game.run(i, j)
+            self.game.run(block_fall_clock, block_move_clock, block_rotate_clock)
             self.score.run()
             self.preview.run()
 
