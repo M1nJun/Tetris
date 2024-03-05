@@ -1,6 +1,7 @@
 import pygame
 from random import choice
 from os import path
+import time
 
 FPS = 200
 clock = pygame.time.Clock()
@@ -99,10 +100,47 @@ class Game:
             self.current_level += 1
         self.update_score(self.current_lines, self.current_score, self.current_level)
 
+    def display_end_screen(self):
+        font = pygame.font.Font(path.join('.','PressStart.ttf'), 35)
+        text_lines = [
+            f"Lines cleared: {self.current_lines}",
+            f"Score: {self.current_score}",
+            f"Level: {self.current_level}"
+        ]
+        y = WINDOW_HEIGHT // 2 - len(text_lines) * 20 // 2
+        for i, line in enumerate(text_lines):
+            text = font.render(line, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, y + i * 40))
+            self.display_surface.blit(text, text_rect)
+            y += 30
+
+        pygame.display.flip()
+
+        self.music = pygame.mixer.Sound(path.join('.', 'audio', 'score.wav'))
+        self.music.play()
+
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.music = pygame.mixer.Sound(path.join('.', 'audio', 'proceed.wav'))
+                    self.music.play()
+                    time.sleep(1)
+                    exit()
+                    
+                elif event.type == pygame.KEYDOWN:
+                    waiting = False
+                    self.music.stop()
+                    self.music = pygame.mixer.Sound(path.join('.', 'audio', 'proceed.wav'))
+                    self.music.play()
+                    time.sleep(1)
+                    exit()
+
+
     def check_game_over(self):
         for block in self.tetromino.blocks:
             if block.pos.y < 0:
-                exit()
+                self.display_end_screen()
 
     # had to create a new argument for tetromino class to shift to allow new tetromino to spawn when curr tetromino hits the bottom
     def spawn_new_tetromino(self):
@@ -396,6 +434,21 @@ class Score:
         self.display_surface.blit(self.surface, self.rect)
         pygame.draw.rect(self.display_surface, WHITE, self.rect, 2, 2)
 
+
+# def main_menu(self):
+#     run = True
+#     while run:
+#         font = pygame.font.Font(path.join('.','PressStart.ttf'), 50, bold=False, italic=True)
+#         label = font.render('Press any key to begin', 1, (255, 255, 255))
+#         self.surface.blit(label, (0 + WINDOW_WIDTH / 2 - (label.get_width()/2), 0 + WINDOW_HEIGHT/2 - (label.get_height()/2)))
+#         pygame.display.update()
+
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 run = False
+#             elif event.type == pygame.KEYDOWN:
+#                 main(window)
+
 class Main:
     def __init__(self):
 
@@ -411,8 +464,7 @@ class Main:
         self.score = Score()
         self.preview = Preview()
 
-        # music
-        # self.music = pygame.mixer.Sound(path.join('.', 'audio', ''))
+        
 
     def update_score(self, lines, score, level):
         self.score.lines = lines
@@ -425,7 +477,54 @@ class Main:
         self.next_shapes.append(choice(list(TETROMINOS.keys())))
         return next_shape
     
+    def display_main_menu(self):
+        font = pygame.font.Font(path.join('.','PressStart.ttf'), 27)
+        text = font.render('Press any key to begin', 1, (255, 255, 255))
+        text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+
+        blink_timer = 0
+        show_text = True
+
+        self.display_surface.fill(GRAY)
+        self.display_surface.blit(text, text_rect)
+        pygame.display.flip()
+
+        self.music = pygame.mixer.Sound(path.join('.', 'audio', 'main_menu.mp3'))
+        self.music.play()
+
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                elif event.type == pygame.KEYDOWN:
+                    waiting = False
+                    self.music.stop()
+                    self.music = pygame.mixer.Sound(path.join('.', 'audio', 'proceed.wav'))
+                    self.music.play()
+                    time.sleep(1)
+            
+            self.display_surface.fill(GRAY)
+        
+            if show_text:
+                self.display_surface.blit(text, text_rect)
+
+            if blink_timer >= FPS * 0.2:  # Blink every half second
+                show_text = not show_text
+                blink_timer = 0
+
+            pygame.display.update()
+
+            blink_timer += 1
+            self.clock.tick(FPS)
+    
     def run(self):
+        self.display_main_menu()
+
+        self.music = pygame.mixer.Sound(path.join('.', 'audio', 'background.mp3'))
+        self.music.play()
+
         block_fall_clock = 0
         block_move_clock = 0
         block_rotate_clock = 0
@@ -450,7 +549,6 @@ class Main:
             pygame.display.update()
 
             clock.tick(FPS)
-
 
 if __name__ == '__main__':
     main = Main()
