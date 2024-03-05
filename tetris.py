@@ -103,10 +103,15 @@ class Game:
     def display_end_screen(self):
         font = pygame.font.Font(path.join('.','PressStart.ttf'), 35)
         text_lines = [
-            f"Lines cleared: {self.current_lines}",
-            f"Score: {self.current_score}",
+            f"Lines cleared: {self.current_lines} ",
+            f"Score: {self.current_score} ",
             f"Level: {self.current_level}"
         ]
+
+        with open("highscore.txt", "a") as file:
+            file.write("\n")
+            file.writelines(text_lines)
+
         y = WINDOW_HEIGHT // 2 - len(text_lines) * 20 // 2
         for i, line in enumerate(text_lines):
             text = font.render(line, True, (255, 255, 255))
@@ -127,7 +132,7 @@ class Game:
                     self.music.play()
                     time.sleep(1)
                     exit()
-                    
+
                 elif event.type == pygame.KEYDOWN:
                     waiting = False
                     self.music.stop()
@@ -537,6 +542,9 @@ class Main:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    self.music = pygame.mixer.Sound(path.join('.', 'audio', 'proceed.wav'))
+                    self.music.play()
+                    time.sleep(1)
                     pygame.quit()
                     exit()
             
